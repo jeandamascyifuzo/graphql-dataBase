@@ -1,4 +1,13 @@
-const { GraphQLObjectType, GraphQLID, GraphQLString, GraphQLInt, GraphQLSchema, GraphQLList, GraphQLNonNull } = require('graphql');
+const {
+    GraphQLObjectType,
+    GraphQLID,
+    GraphQLString,
+    GraphQLInt,
+    GraphQLSchema,
+    GraphQLList,
+    GraphQLNonNull,
+    GraphQLEnumType
+} = require('graphql');
 
 //mongoose model
 const Project = require('./../model/Project');
@@ -8,14 +17,14 @@ const Client = require('./../model/Client');
 //project type
 const ProjectType = new GraphQLObjectType({
     name: 'Project',
-    fields: () =>({
-        id: {type: GraphQLID},
-        name: { type: GraphQLString},
-        description: { type: GraphQLString},
-        status: {type: GraphQLString},
+    fields: () => ({
+        id: { type: GraphQLID },
+        name: { type: GraphQLString },
+        description: { type: GraphQLString },
+        status: { type: GraphQLString },
         client: {
             type: ClientType,
-            resolve(parent, args, context){
+            resolve(parent, args, context) {
                 return Client.findById(parent.id)
             },
         },
@@ -25,11 +34,11 @@ const ProjectType = new GraphQLObjectType({
 //client type
 const ClientType = new GraphQLObjectType({
     name: 'Client',
-    fields:()=>({
-        id: {type: GraphQLID},
-        name: {type: GraphQLString},
-        email: {type: GraphQLString},
-        phone: {type: GraphQLInt}
+    fields: () => ({
+        id: { type: GraphQLID },
+        name: { type: GraphQLString },
+        email: { type: GraphQLString },
+        phone: { type: GraphQLInt }
     })
 });
 
@@ -38,9 +47,9 @@ const RootQuery = new GraphQLObjectType({
     name: 'RootQueryType',
     fields: {
         //get projects
-        projects:{
+        projects: {
             type: new GraphQLList(ProjectType),
-            resolve(parent, args, context){
+            resolve(parent, args, context) {
                 return Project.find();
             }
         },
@@ -49,15 +58,15 @@ const RootQuery = new GraphQLObjectType({
         project: {
             type: ProjectType,
             args: { id: { type: GraphQLID } },
-            resolve(parent, args, context){
+            resolve(parent, args, context) {
                 return Project.findById(args.id)
             }
         },
 
         //get clients
-        clients:{
+        clients: {
             type: new GraphQLList(ClientType),
-            resolve(parent, args, context){
+            resolve(parent, args, context) {
                 return Client.find();
             }
         },
@@ -66,7 +75,7 @@ const RootQuery = new GraphQLObjectType({
         client: {
             type: ClientType,
             args: { id: { type: GraphQLID } },
-            resolve(parent, args, context){
+            resolve(parent, args, context) {
                 return Client.findById(args.id)
             }
         },
@@ -75,42 +84,67 @@ const RootQuery = new GraphQLObjectType({
 
 //Mutation
 const RootMutation = new GraphQLObjectType({
-    name:'Mutation',
-    fields:{
-        //add project in the database
+    name: 'Mutation',
+    fields: {
 
-        addProject:{
+        //add project in the database
+        addProject: {
             type: ProjectType,
-            args:{
+            args: {
                 name: { type: GraphQLNonNull(GraphQLString) },
-                description: { type: GraphQLNonNull(GraphQLString) }
+                description: { type: GraphQLNonNull(GraphQLString) },
+                status: {
+                    type: new GraphQLEnumType({
+                        name: 'ProjectStatus',
+                        values: {
+                            'new': { values: 'Not Started' },
+                            'progress': { values: 'In Progress' },
+                            'completed': { values: 'Completed' }
+                        }
+                    }),
+                    defaultValue: 'Not Started',
+                },
+                clientId: { type: GraphQLNonNull(GraphQLID) },
             },
-            resolve(parent, args, context){
+            resolve(parent, args, context) {
                 const project = new Project({
                     name: args.name,
-                    description: args.description
+                    description: args.description,
+                    status: args.status,
+                    clientId: args.clientId
                 });
-                return project.save()
+                return project.save ()
             }
         },
 
-        //add client in db
-        addClient:{
+        //add client in database
+        addClient: {
             type: ClientType,
-            args:{
-                name: {type: GraphQLNonNull(GraphQLString)},
-                email: {type: GraphQLNonNull(GraphQLString)},
-                phone: {type: GraphQLNonNull(GraphQLString)}
+            args: {
+                name: { type: GraphQLNonNull(GraphQLString) },
+                email: { type: GraphQLNonNull(GraphQLString) },
+                phone: { type: GraphQLNonNull(GraphQLString) }
             },
-            resolve(parent, args, context){
+            resolve(parent, args, context) {
                 const client = new Client({
                     name: args.name,
                     email: args.email,
                     phone: args.phone
                 });
-                return client .save();
+                return client.save();
             }
-        }
+        },
+
+        //delete Client
+        deleteClient: {
+            type: ClientType,
+            args: {
+                id: { type: GraphQLNonNull(GraphQLID) }
+            },
+            resolve(parent, args, context) {
+                return Client.findByIdAndRemove(args.id);
+            },
+        },
     }
 })
 
